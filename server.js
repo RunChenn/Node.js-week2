@@ -71,16 +71,16 @@ const reqListener = async (req, res) => {
           });
           handleSuccess(res, posts);
         } else {
-          handleErrorr(res, 400, 'content必填');
+          handleError(res, 400, 'content必填');
         }
       } catch (err) {
-        handleErrorr(res, 400, '參數有誤');
+        handleError(res, 400, '參數有誤');
       }
     });
   } else if (req.url === '/posts' && req.method === 'OPTIONS') {
     handleSuccess(res, 'OPTIONS');
   } else {
-    handleErrorr(res, 404, '無此網站路由');
+    handleError(res, 404, '無此網站路由');
   }
 };
 

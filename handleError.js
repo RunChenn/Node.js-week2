@@ -1,13 +1,7 @@
 const { HEADERS } = require('./corsHeader');
 
-const handleError = (res, err) => {
-  res.writeHead(400, HEADERS);
-  let message = '';
-  if (err) {
-    message = err.message;
-  } else {
-    message = '欄位未填寫正確或無此 id';
-  }
+const handleError = (res, status, message) => {
+  res.writeHead(status, HEADERS);
   res.write(
     JSON.stringify({
       status: 'false',

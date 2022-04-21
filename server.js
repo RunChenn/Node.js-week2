@@ -1,9 +1,9 @@
 const http = require('http');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const { HEADERS } = require('./corsHeader');
 const handleSuccess = require('./handleSuccess');
 const handleError = require('./handleError');
+const Post = require('./models/posts');
 
 dotenv.config({ path: './config.env' });
 
@@ -19,120 +19,68 @@ mongoose
     console.log(err);
   });
 
-const postSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: [true, 'Content 未填寫'],
-  },
-  image: {
-    type: String,
-    default: '',
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now(),
-    select: false,
-  },
-  name: {
-    type: String,
-    required: [true, '貼文姓名未填寫'],
-  },
-  likes: {
-    type: Number,
-    default: 0,
-  },
-});
-
-const Post = mongoose.model('Post', postSchema);
-// const init = async () => {
-//   const AllPost = await Post.find();
-//   console.log(AllPost);
-// };
-// init();
-
 const reqListener = async (req, res) => {
-  const headers = {
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Content-Length, X-Requested-With',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'PATCH, POST, GET,OPTIONS,DELETE',
-    'Content-Type': 'application/json',
-  };
   let body = '';
   req.on('data', (chunk) => {
     body += chunk;
   });
 
-  if (req.url == '/posts' && req.method == 'GET') {
+  if (req.url === '/posts' && req.method === 'GET') {
     const post = await Post.find();
-    res.writeHead(200, headers);
-    res.write(
-      JSON.stringify({
-        status: 'success',
-        post,
-      })
-    );
-    res.end();
-  } else if (req.url == '/posts' && req.method == 'POST') {
+    handleSuccess(res, post);
+  } else if (req.url === '/posts' && req.method === 'POST') {
     req.on('end', async () => {
       try {
         const data = JSON.parse(body);
-        if (data.content !== undefined) {
+        if (data.content !== '') {
+          let { name, content, image, createdAt } = data;
           const newPost = await Post.create({
-            name: data.name,
-            content: data.content,
+            name,
+            content,
+            image,
+            createdAt,
           });
-          res.writeHead(200, headers);
-          res.write(
-            JSON.stringify({
-              status: 'success',
-              data: newPost,
-            })
-          );
-          res.end();
+          handleSuccess(res, newPost);
         } else {
-          res.writeHead(400, headers);
-          res.write(
-            JSON.stringify({
-              status: 'false',
-              message: '欄位未填寫正確，或無此 todo ID',
-            })
-          );
-          res.end();
+          handleError(res, 400, '參數有誤');
         }
       } catch (error) {
-        res.writeHead(400, headers);
-        res.write(
-          JSON.stringify({
-            status: 'false',
-            message: error,
-          })
-        );
-        res.end();
+        handleError(res, 400, '參數有誤');
       }
     });
-  } else if (req.url.startsWith('/posts/') && req.method == 'DELETE') {
+  } else if (req.url === '/posts' && req.method === 'DELETE') {
+    const posts = await Post.deleteMany({});
+    handleSuccess(res, posts);
+  } else if (req.url.startsWith('/posts/') && req.method === 'DELETE') {
     const id = req.url.split('/').pop();
-    await Post.findByIdAndDelete(id);
-    res.writeHead(200, headers);
-    res.write(
-      JSON.stringify({
-        status: 'success',
-        data: null,
-      })
-    );
-    res.end();
-  } else if (req.method == 'OPTIONS') {
-    res.writeHead(200, headers);
-    res.end();
+    const posts = await Post.findByIdAndDelete(id);
+    handleSuccess(res, posts);
+  } else if (req.url.startsWith('/posts/') && req.method === 'PATCH') {
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        const id = req.url.split('/').pop();
+        if (data.content !== '') {
+          let { content, image, likes } = data;
+          const posts = await Post.findByIdAndUpdate(id, {
+            $set: {
+              content,
+              image,
+              likes,
+            },
+          });
+          handleSuccess(res, posts);
+        } else {
+          handleErrorr(res, 400, 'content必填');
+        }
+      } catch (err) {
+        handleErrorr(res, 400, '參數有誤');
+      }
+    });
+  } else if (req.url === '/posts' && req.method === 'OPTIONS') {
+    handleSuccess(res, 'OPTIONS');
   } else {
-    res.writeHead(404, headers);
-    res.write(
-      JSON.stringify({
-        status: 'false',
-        message: '無此網站路由',
-      })
-    );
-    res.end();
+    handleErrorr(res, 404, '無此網站路由');
   }
 };
 
